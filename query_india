@@ -1,0 +1,101 @@
+-- Preliminary: Basic Data Selection
+SELECT * 
+FROM public.india_ut
+ORDER BY 2
+
+-- 1. Sum CO numbers by Indian city and save into a new table.
+SELECT city, SUM(co) AS summed_co INTO summed_table FROM india_ut
+GROUP BY city
+
+-- Alter table from double precision to numeric
+ALTER TABLE summed_table 
+ALTER COLUMN summed_co TYPE NUMERIC(10,2)
+
+-- 2. Group Indian cities into three tiers (Low, Medium, High) based on the size of their summed CO numbers.
+
+ALTER TABLE summed_table ADD COLUMN co_quant varchar(50)
+
+UPDATE summed_table  
+SET co_quant = (CASE 
+		WHEN summed_co < 500 
+		THEN 'Low'
+		WHEN summed_co >= 500 AND summed_co < 1000
+		THEN 'Medium'
+		WHEN summed_co >= 1000
+		THEN 'High'
+	END)
+
+SELECT * FROM summed_table
+-- 3. Find the top 3 Indian cities with the highest SO numbers, the top 3 cities with the lowest, and the two combined.
+
+SELECT city, summed_co, co_quant 
+FROM summed_table
+ORDER BY summed_co desc
+LIMIT 3
+
+SELECT city, summed_co, co_quant 
+FROM summed_table
+ORDER BY summed_co asc
+LIMIT 3
+
+(SELECT city, summed_co, co_quant 
+FROM summed_table
+ORDER BY summed_co desc
+LIMIT 3)
+UNION ALL
+(SELECT city, summed_co, co_quant 
+FROM summed_table
+ORDER BY summed_co asc
+LIMIT 3)
+
+-- Select rows 6 through to 15 (as per the primary key in a basic query of the entire table) from the summed_table.
+
+SELECT city, summed_co, co_quant 
+FROM summed_table
+LIMIT 9 OFFSET 5
+
+
+-- 4. Calculate the percentage of each city's contribution of CO
+SELECT city, summed_co, CAST((summed_co * 100) / (SELECT SUM(summed_co) FROM summed_table) AS DECIMAL) AS total_percentage
+FROM summed_table
+
+-- 5. Find out which cities are emitting above  average CO
+WITH AverageEmit 
+AS
+(
+	SELECT AVG(summed_co) AS av_rate
+	FROM summed_table
+)
+
+SELECT * FROM summed_table
+WHERE summed_co >= (Select av_rate FROM AverageEmit)
+
+-- 6. Select the cities with the highest amounts of No2, SO2, and CO. Summarize all three per city, and include quantifiers (high, medium, low).
+
+SELECT city, SUM(no2 + So2 + CO) AS EmitSum,
+CASE 
+	WHEN SUM(no2 + So2 + CO) < 500 
+	THEN 'Low'
+	WHEN SUM(no2 + So2 + CO) >= 500 AND SUM(no2 + So2 + CO) < 1000
+	THEN 'Medium'
+	WHEN SUM(no2 + So2 + CO) >= 1000
+	THEN 'High'
+END AS EmitQuantifier
+FROM india_ut
+GROUP BY city
+
+-- 7. Calculate No2 running totals for the cities of Ahmedabad, Chennai, and Delhi for days in January 2015. Exclude all nulls.
+
+SELECT city, date, no2, CAST(SUM(no2) OVER(PARTITION BY city ORDER BY date ROWS UNBOUNDED PRECEDING) AS DECIMAL) AS running_total
+FROM india_ut
+WHERE date LIKE '2015-01%' AND no2 IS NOT NULL AND city IN ('Ahmedabad', 'Delhi', 'Chennai')
+ORDER BY date
+
+-- 8. Select Indian cities with an above average amount of SO
+
+SELECT india_ut.city, summed_co, CAST(SUM(no2) AS DECIMAL(10,2)) AS summed_no, CAST(SUM(so2) AS DECIMAL(10,2)) AS summed_so FROM india_ut
+LEFT JOIN summed_table ON india_ut.city = summed_table.city
+WHERE summed_co >= (SELECT AVG(summed_co) FROM summed_table)
+AND 3 >= (SELECT AVG(3) FROM india_ut)
+AND 4 >= (SELECT AVG(4) FROM india_ut)
+GROUP BY india_ut.city, summed_co
