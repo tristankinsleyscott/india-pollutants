@@ -1,6 +1,9 @@
 # Indian Pollutants Analysis
 A small visualization project depicting the quantity of Nitrogen Dioxide, Sulfer Dioxide, and  Carbon Monoxide across a number of Indian cities from the years of 2015 and 2020. Data was queried using SQL and displayed using Tableau.
 
+## Visualization
+The Tableau visualization can be viewed [here](https://public.tableau.com/app/profile/tristan.scott/viz/IndiaPollutantsStoryboard/Dashboard1?publish=yes)
+
 ## Tools
 Data was queried extracted using PostgresSQL in combination with Microsoft Excel. The final visualization storymap was created with Tableau.
 
